@@ -1,0 +1,58 @@
+# This config is equivalent to both the '.circleci/extended/orb-free.yml' and the base '.circleci/config.yml'
+version: 2.1
+
+orbs:
+  aws-s3: circleci/aws-s3@3.0.0
+
+jobs:
+  build:
+    description: Build the app
+    docker:
+      - image: circleci/node:14.16.1
+    steps:
+      - checkout
+      - run: echo "npm installing"
+      - run: npm install
+      - run: npm run build
+      - run: ls
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - build
+  test:
+    docker:
+      - image: circleci/node:12.9.1
+    steps:
+      - checkout
+      - run: echo "Running test suite (TODO not currently applicable)"
+
+  s3-deploy:
+    description: Update S3 bucket with static website build files
+    parameters:
+      bucket-name:
+        description: Name of the S3 bucket to deploy to
+        type: string
+    docker:
+      - image: 'cimg/python:3.6'
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - aws-s3/sync:
+          arguments: |
+            --acl public-read \
+            --cache-control "max-age=86400"
+          from: ./build
+          to: 's3://<<parameters.bucket-name>>'
+    
+workflows:
+  update-s3:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - main
+      - s3-deploy:
+          bucket-name: edu-vidal-web.ml
+          requires:
+            - build
