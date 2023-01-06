@@ -78,4 +78,4 @@ workflows:
   version: 2
   deploy:
     jobs:
-      - deploy-lambda:
+      - deploy-lambda
